@@ -54,38 +54,68 @@ const showFilterOption = ref(
 const isDescState = ref(columnHeadings.value.map(() => false));
 
 function sortColumn(index) {
+  getFilteredData(data)
+  getSortedData(filteredData, isDescState.value[index], columnKeys.value[index])
+  getVisiblePage(sortedData)
   isDescState.value[index] = !isDescState.value[index];
+}
+
+const sortedData = ref([])
+
+function getSortedData(input, isDesc, column){
+  sortedData.value.length = 0
+  let res = input.value.sort((a, b) => {
+    if(isDesc){
+      return a[column] > b[column] ? -1 : 1
+    }
+    else {
+      return a[column] > b[column] ? 1 : -1
+    }
+  })
+  console.log(res)
+  sortedData.value.push(...res)
 }
 
 const filterTexts = ref(columnHeadings.value.map(() => ""));
 const showFilterMenu = ref(columnHeadings.value.map(() => false));
+const filteredData = ref([])
 
 function toggleFilter(index) {
   showFilterMenu.value[index] = !showFilterMenu.value[index];
 }
 function filterData(idx, text) {
-  console.log("filter applied")
-  console.log(idx, text)
-  filterTexts.value[idx] = text
+  filterTexts.value[idx] = String(text)
+  getFilteredData(data)
+  getVisiblePage(filteredData)
 }
 function getFilteredData(input) {
+    filteredData.value.length = 0
     console.log(filterTexts.value)
-    return input.value.filter(row => {
-        for(let i=0; i< columnHeadings.length; i++){
+    let result = input.value.filter(row => {
+      console.log(row)
+        for(let i=0; i< columnKeys.value.length; i++){
+          console.log(filterTexts.value[i])
             if(filterTexts.value[i] == ''){
                 continue
             }
             else {
-                if(!row[columnHeadings.value[i]].contains(filterTexts.value[i])){
+              console.log(row[columnKeys.value[i]])
+                if(!String(row[columnKeys.value[i]]).toLowerCase().includes(filterTexts.value[i].toLowerCase())){
                     return false;
                 }
             }
         }
+        return true;
     })
+    console.log(result)
+    filteredData.value.push(...result)
 }
-const filteredData = getFilteredData(data)
-function clearFilter() {
-  console.log("filer cleared");
+getFilteredData(data)
+
+function clearFilter(idx) {
+  filterTexts.value[idx] = ''
+  getFilteredData(data)
+  getVisiblePage(filteredData)
 }
 
 //pagination
@@ -93,46 +123,54 @@ function clearFilter() {
 if (paginate.value && !pageSize.value) {
   throw Error("Please set page size");
 }
+const pgSize = ref(pageSize.value) //duplicating as we cannot modify prop PageSize
 const currentPage = ref(0);
 const totalItems = ref(data.value.length);
 const numPages = computed(() => {
-  return Math.ceil(totalItems.value / pageSize.value);
+  return Math.ceil(totalItems.value / pgSize.value);
 });
 
 const isNullOrUndefined = (val) => {
   return val == null || val == undefined;
 };
+const visibleData = ref([])
 
-function getVisiblePage(input, tableState = {}) {
-  //{currentPage, pageSize}
-  const output = ref([]);
+function getVisiblePage(input) {
+  visibleData.value.length = 0
   input = [...input.value];
-  let ps = tableState?.pageSize;
-  let cp = tableState?.currentPage;
+  let ps = pgSize.value;
+  let cp = currentPage.value;
+
   if (isNullOrUndefined(cp) || isNullOrUndefined(ps)) {
     ps = input.length;
     cp = 0;
   }
-  output.value.push(...input.slice(cp * ps, cp * ps + ps));
-  return output;
+  visibleData.value.push(...input.slice(cp * ps, cp * ps + ps));
 }
 
-const visibleData = getVisiblePage(data, {
-  currentPage: currentPage.value,
-  pageSize: pageSize.value,
-});
+function onPageUpdate(n){
+  currentPage.value = n;
+  getVisiblePage(filteredData)
+}
+
+function onPageSizeUpdate(n){
+  pgSize.value = n;
+  currentPage.value = 0
+  getVisiblePage(filteredData)
+}
+
+getVisiblePage(filteredData);
 
 const check = () => {
-  currentPage.value++;
-  visibleData.value = getVisiblePage(data, {
-  currentPage: 2,
-  pageSize: pageSize.value,
-});
+  // alert('check funtion called')
+  // // currentPage.value = 1
+  // getFilteredData(data)
+  // getVisiblePage(filteredData)
 };
 </script>
 <template>
   <div class="vm-table-wrapper">
-    {{ numPages + " , " + totalItems + " , " + pageSize + " , " + filteredData }}
+    {{ numPages + " , " + totalItems + " , " + pageSize + " , " + filterTexts }}
     <button @click="check">Check</button>
     <table class="vm-table">
       <!-- heading -->
@@ -149,7 +187,7 @@ const check = () => {
           @toggleFilter="toggleFilter(idx)"
           @sort="sortColumn(idx)"
           @applyFilter="filterData(idx, $event)"
-          @clearFilter="clearFilter"
+          @clearFilter="clearFilter(idx)"
         />
       </tr>
       <!-- body -->
@@ -163,9 +201,11 @@ const check = () => {
     </table>
     <div class="pagination-wrapper">
       <Pagination
-        :totalItems="totalItems"
+        :numOfPages="numPages"
         :current="currentPage"
         :pageSize="pageSize"
+        @updatedPageNumber="onPageUpdate"
+        @updatedPageSize="onPageSizeUpdate"
       />
     </div>
   </div>
