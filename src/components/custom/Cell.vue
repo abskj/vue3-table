@@ -57,15 +57,18 @@ function onFilterApply(text) {
 <style>
 .filter-wrapper {
   position: absolute;
+  transform: translateY(1.6em) translateX(-50%);
 }
 .vm-cell__head {
-  border: 1px solid rgb(160, 160, 160);
+  border: 1px solid rgb(59, 59, 59);
   display: flex;
   justify-content: space-between;
   padding: 0.5em;
 }
 .vm-cell__actions {
   display: flex;
+  gap: 0.5em;
+  margin-left: 0.5em;
 }
 .vm-cell__text {
   /* margin: 0.5em; */

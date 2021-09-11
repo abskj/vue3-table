@@ -25,8 +25,6 @@ function onClear(){
 
 <style scoped>
 .filter{
-  top: 2rem;
-  float: inline-start;
   display: flex;
   flex-direction: column;
   border: 1px solid aquamarine;
