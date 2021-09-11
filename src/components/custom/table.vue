@@ -2,6 +2,11 @@
 import { defineEmits, defineProps, toRefs, ref, reactive, computed } from "vue";
 import Cell from "./Cell.vue";
 import Pagination from "./Pagination.vue";
+import {
+  composeFilter,
+  composeSorting,
+  composePagination,
+} from "./composable/utils";
 
 /*
  * index refers by default to column index
@@ -16,6 +21,9 @@ const props = defineProps({
   paginate: Boolean,
   pageSize: Number,
   searchKey: String,
+  minWidths: Array,
+  maxWidths: Array,
+  priority: Array,
 });
 
 const {
@@ -51,128 +59,73 @@ const showFilterOption = ref(
   )
 );
 
+const { sortedData, getSortedData } = composeSorting();
 const isDescState = ref(columnHeadings.value.map(() => false));
 
 function sortColumn(index) {
-  getFilteredData(data)
-  getSortedData(filteredData, isDescState.value[index], columnKeys.value[index])
-  getVisiblePage(sortedData)
+  getFilteredData(data);
+  getSortedData(
+    filteredData,
+    isDescState.value[index],
+    columnKeys.value[index]
+  );
+  getVisiblePage(sortedData);
   isDescState.value[index] = !isDescState.value[index];
 }
 
-const sortedData = ref([])
+//FIlter related logic
 
-function getSortedData(input, isDesc, column){
-  sortedData.value.length = 0
-  let res = input.value.sort((a, b) => {
-    if(isDesc){
-      return a[column] > b[column] ? -1 : 1
-    }
-    else {
-      return a[column] > b[column] ? 1 : -1
-    }
-  })
-  console.log(res)
-  sortedData.value.push(...res)
-}
+const {
+  filterTexts,
+  showFilterMenu,
+  filteredData,
+  toggleFilter,
+  getFilteredData,
+} = composeFilter(columnKeys);
 
-const filterTexts = ref(columnHeadings.value.map(() => ""));
-const showFilterMenu = ref(columnHeadings.value.map(() => false));
-const filteredData = ref([])
-
-function toggleFilter(index) {
-  showFilterMenu.value[index] = !showFilterMenu.value[index];
-}
 function filterData(idx, text) {
-  filterTexts.value[idx] = String(text)
-  getFilteredData(data)
-  getVisiblePage(filteredData)
+  filterTexts.value[idx] = String(text);
+  getFilteredData(data);
+  getVisiblePage(filteredData);
+  showFilterMenu.value[idx] = false;
 }
-function getFilteredData(input) {
-    filteredData.value.length = 0
-    console.log(filterTexts.value)
-    let result = input.value.filter(row => {
-      console.log(row)
-        for(let i=0; i< columnKeys.value.length; i++){
-          console.log(filterTexts.value[i])
-            if(filterTexts.value[i] == ''){
-                continue
-            }
-            else {
-              console.log(row[columnKeys.value[i]])
-                if(!String(row[columnKeys.value[i]]).toLowerCase().includes(filterTexts.value[i].toLowerCase())){
-                    return false;
-                }
-            }
-        }
-        return true;
-    })
-    console.log(result)
-    filteredData.value.push(...result)
-}
-getFilteredData(data)
 
 function clearFilter(idx) {
-  filterTexts.value[idx] = ''
-  getFilteredData(data)
-  getVisiblePage(filteredData)
+  filterTexts.value[idx] = "";
+  getFilteredData(data);
+  getVisiblePage(filteredData);
+  showFilterMenu.value[idx] = false;
 }
+getFilteredData(data);
 
-//pagination
+//pagination logic
 
 if (paginate.value && !pageSize.value) {
   throw Error("Please set page size");
 }
-const pgSize = ref(pageSize.value) //duplicating as we cannot modify prop PageSize
-const currentPage = ref(0);
-const totalItems = ref(data.value.length);
-const numPages = computed(() => {
-  return Math.ceil(totalItems.value / pgSize.value);
-});
 
-const isNullOrUndefined = (val) => {
-  return val == null || val == undefined;
-};
-const visibleData = ref([])
+const { currentPage, totalItems, visibleData, getVisiblePage, numPages, pgSize } =
+  composePagination(data, pageSize);
 
-function getVisiblePage(input) {
-  visibleData.value.length = 0
-  input = [...input.value];
-  let ps = pgSize.value;
-  let cp = currentPage.value;
-
-  if (isNullOrUndefined(cp) || isNullOrUndefined(ps)) {
-    ps = input.length;
-    cp = 0;
-  }
-  visibleData.value.push(...input.slice(cp * ps, cp * ps + ps));
-}
-
-function onPageUpdate(n){
+function onPageUpdate(n) {
   currentPage.value = n;
-  getVisiblePage(filteredData)
+  getVisiblePage(filteredData);
 }
 
-function onPageSizeUpdate(n){
+function onPageSizeUpdate(n) {
   pgSize.value = n;
-  currentPage.value = 0
-  getVisiblePage(filteredData)
+  currentPage.value = 0;
+  getVisiblePage(filteredData);
 }
 
 getVisiblePage(filteredData);
-
-const check = () => {
-  // alert('check funtion called')
-  // // currentPage.value = 1
-  // getFilteredData(data)
-  // getVisiblePage(filteredData)
-};
 </script>
 <template>
   <div class="vm-table-wrapper">
     {{ numPages + " , " + totalItems + " , " + pageSize + " , " + filterTexts }}
     <button @click="check">Check</button>
     <table class="vm-table">
+      <col v-for="colname in columnKeys" class="vm-table__column" />
       <!-- heading -->
       <tr>
         <Cell
@@ -191,11 +144,13 @@ const check = () => {
         />
       </tr>
       <!-- body -->
-      <tr v-for="(row, idx) in visibleData" :key="idx">
+      <tr v-for="(row, idx) in visibleData" :key="idx" class="vm-table__row">
         <slot name="row" :row="row" :columns="columnKeys">
-          <td v-for="colname in columnKeys">
-            {{ row[colname] }}
-          </td>
+          <Cell
+            v-for="colname in columnKeys"
+            :key="colname + '_' + idx"
+            :text="row[colname]"
+          />
         </slot>
       </tr>
     </table>
@@ -210,4 +165,28 @@ const check = () => {
     </div>
   </div>
 </template>
-<style></style>
+<style>
+.vm-table-wrapper {
+  /* width: 100%; */
+  /* display:/ grid; */
+  /* grid-; */
+}
+.vm-table {
+  /* margin: auto; */
+  width: 100%;
+}
+
+.vm-table * td,
+.vm-table * th {
+  padding: 0.5em;
+}
+.vm-table__row {
+  transition-duration: 100ms;
+}
+.vm-table__row:hover {
+  background-color: #c2c2c2;
+}
+.vm-table__column {
+  /* min-width: 200px; */
+}
+</style>

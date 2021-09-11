@@ -36,13 +36,13 @@ const order = ["brand", "year", "vin", "color"];
         paginate
         :pageSize="7"
       >
-        <template v-slot:row="{ row, columns }">
+        <!-- <template v-slot:row="{ row, columns }">
           <td v-for="col in columns" :key="row[col]">
             <p>
               {{ row[col] }}
             </p>
           </td>
-        </template>
+        </template> -->
       </MyTable>
     </div>
   </div>
@@ -53,7 +53,7 @@ const order = ["brand", "year", "vin", "color"];
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-align: center;
+  /* text-align: center; */
   color: #2c3e50;
   margin-top: 60px;
 }
