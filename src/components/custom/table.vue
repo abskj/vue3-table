@@ -1,5 +1,5 @@
 <script setup>
-import { defineEmits, defineProps, toRefs, ref, reactive, computed, onMounted, nextTick } from "vue";
+import { defineEmits, defineProps, toRefs, ref, reactive, computed, onMounted, nextTick, onUnmounted } from "vue";
 import Cell from "./Cell.vue";
 import Pagination from "./Pagination.vue";
 import {
@@ -213,6 +213,10 @@ onMounted(()=>{
   Object.keys(maxWidths.value).forEach(k => setMaxWidth(colRefs[k], maxWidths.value[k]))
   hideOrShowLessImportantColumn()
   window.addEventListener('resize', hideOrShowLessImportantColumn)
+})
+
+onUnmounted(()=>{
+  window.removeEventListener('resize', hideOrShowLessImportantColumn)
 })
 
 </script>

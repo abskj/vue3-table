@@ -1,5 +1,6 @@
 <script setup>
 import MyTable from "./components/custom/table.vue";
+import Cell from "./components/custom/Cell.vue";
 
 const cars = [
   { brand: "Volkswagen", year: 2012, color: "Orange", vin: "dsad231ff" },
@@ -33,13 +34,27 @@ const order = ["brand", "year", "vin", "color"];
         :maxWidths="{}"
         :fullWidth="false"
         :priority="['brand', 'color', 'year', 'vin']"
-      >
+      > 
+        
+
+        <!-- Uncomment below block to see how row slot is used -->
+
         <!-- <template v-slot:row="{ row, columns }">
           <td v-for="col in columns" :key="row[col]">
             <p>
               {{ row[col] }}
             </p>
           </td>
+        </template> -->
+
+        <!-- Uncomment below block to see how Cell component can be used. This is recommended.
+        attribute text of Cell corresponds to data in cell. But Cell also gives slot for custom markup
+        use head attribute to  choose header cell (th) else it generates td -->
+
+        <!-- <template v-slot:row="{ row, columns }">
+        <Cell v-for="col in columns" :key="row[col]" :text="row[col]">
+        <p>{{row[col]}}</p>
+        </Cell>
         </template> -->
       </MyTable>
     </div>
