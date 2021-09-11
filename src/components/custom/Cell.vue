@@ -59,7 +59,7 @@ function onFilterApply(text) {
   position: absolute;
 }
 .vm-cell__head {
-  border: 2px solid blue;
+  border: 1px solid rgb(160, 160, 160);
   display: flex;
   justify-content: space-between;
   padding: 0.5em;
@@ -70,4 +70,5 @@ function onFilterApply(text) {
 .vm-cell__text {
   /* margin: 0.5em; */
 }
+
 </style>

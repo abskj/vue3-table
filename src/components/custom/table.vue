@@ -1,5 +1,5 @@
 <script setup>
-import { defineEmits, defineProps, toRefs, ref, reactive, computed } from "vue";
+import { defineEmits, defineProps, toRefs, ref, reactive, computed, onMounted, nextTick } from "vue";
 import Cell from "./Cell.vue";
 import Pagination from "./Pagination.vue";
 import {
@@ -8,8 +8,9 @@ import {
   composePagination,
 } from "./composable/utils";
 
-/*
+/* note:
  * index refers by default to column index
+ * functions begining with 'get' are not getters but they update the value of that particular varaible
  */
 
 const props = defineProps({
@@ -21,9 +22,22 @@ const props = defineProps({
   paginate: Boolean,
   pageSize: Number,
   searchKey: String,
-  minWidths: Array,
-  maxWidths: Array,
-  priority: Array,
+  minWidths: {
+    type: Object,
+    default: {}
+  }, //key-value pair of column-key and value
+  maxWidths: {
+    type: Object,
+    default: {}
+  }, //key-value pair of column-key and value
+  priority: {
+    type: Array,
+    default: []
+  },
+  fullWidth: {
+    type: Boolean,
+    default: true,
+  },
 });
 
 const {
@@ -34,12 +48,17 @@ const {
   sortableColumns,
   paginate,
   pageSize,
+  minWidths,
+  maxWidths,
+  priority,
+  fullWidth,
 } = toRefs(props);
 
 if (!(data.value && columnHeadings.value && data.value.length)) {
   throw Error("empty table");
 }
 
+// columnKeys will store the keys in order of display
 const columnKeys = ref([]);
 if (columnOrder.value) {
   columnKeys.value.push(...columnOrder.value);
@@ -59,6 +78,7 @@ const showFilterOption = ref(
   )
 );
 
+//sorting related Logic
 const { sortedData, getSortedData } = composeSorting();
 const isDescState = ref(columnHeadings.value.map(() => false));
 
@@ -96,7 +116,6 @@ function clearFilter(idx) {
   getVisiblePage(filteredData);
   showFilterMenu.value[idx] = false;
 }
-getFilteredData(data);
 
 //pagination logic
 
@@ -118,14 +137,89 @@ function onPageSizeUpdate(n) {
   getVisiblePage(filteredData);
 }
 
+getFilteredData(data);
 getVisiblePage(filteredData);
+
+//========================================================================
+
+const tableParent = ref(null)
+const colRefs = {}
+const setColRef = (el) => {
+  colRefs[el.getAttribute("columnKey")] = el
+}
+const setMinWidth = (el, val)=>{
+  el.style.minWidth = val
+}
+const setMaxWidth = (el, val) => {
+  el.style.maxWidth = val
+}
+const isOverflown = (el) => {
+  let isOverflowing = el.clientWidth < el.scrollWidth 
+  // console.log(el.scrollWidth, el.clientWidth)
+  return isOverflowing;
+}
+
+const columnHiddenStack = []
+const lastHideScrollWidth = []
+
+const hideColumn = (key) =>{
+  let prevWidth = tableParent.value.scrollWidth
+  let idx = columnKeys.value.indexOf(key) +1
+  document.querySelectorAll(`td:nth-child(${idx}), th:nth-child(${idx})`).forEach(x=> x.classList.add('hidden'))
+  columnHiddenStack.push(key)
+  lastHideScrollWidth.push(prevWidth)
+}
+
+const showColumn = (key) =>{
+  let idx = columnKeys.value.indexOf(key) +1
+  document.querySelectorAll(`td:nth-child(${idx}), th:nth-child(${idx})`).forEach(x=> x.classList.remove('hidden'))
+  lastHideScrollWidth.pop()
+}
+
+const getColToHide = () => {
+  let colIdx = priority.value.length - 1- columnHiddenStack.length
+  if(colIdx < 1){
+    return ""
+  }
+  else {
+    console.log(priority.value[colIdx])
+    return priority.value[colIdx]
+  }
+}
+
+
+function hideOrShowLessImportantColumn() {
+  if(priority.value.length){
+    if(isOverflown(tableParent.value) && getColToHide()){
+      hideColumn(getColToHide())
+      if(isOverflown(tableParent.value)){
+        hideOrShowLessImportantColumn()
+      }
+    }
+    else{
+      if(lastHideScrollWidth.length){
+        if((lastHideScrollWidth[lastHideScrollWidth.length -1])<=tableParent.value.clientWidth){
+          let colToShow = columnHiddenStack.pop()
+          showColumn(colToShow)
+          hideOrShowLessImportantColumn()
+        }
+      }
+    }
+  }
+  
+}
+onMounted(()=>{
+  Object.keys(minWidths.value).forEach(k => setMinWidth(colRefs[k], minWidths.value[k]))
+  Object.keys(maxWidths.value).forEach(k => setMaxWidth(colRefs[k], maxWidths.value[k]))
+  hideOrShowLessImportantColumn()
+  window.addEventListener('resize', hideOrShowLessImportantColumn)
+})
+
 </script>
 <template>
-  <div class="vm-table-wrapper">
-    {{ numPages + " , " + totalItems + " , " + pageSize + " , " + filterTexts }}
-    <button @click="check">Check</button>
-    <table class="vm-table">
-      <col v-for="colname in columnKeys" class="vm-table__column" />
+  <div class="vm-table-wrapper"  ref="tableParent">
+    <table class="vm-table" :class="{'full-width': fullWidth}">
+      <col v-for="(colname, idx) in columnKeys" :columnKey="colname" :key="colname" class="vm-table__column" :ref="setColRef" />
       <!-- heading -->
       <tr>
         <Cell
@@ -173,6 +267,12 @@ getVisiblePage(filteredData);
 }
 .vm-table {
   /* margin: auto; */
+  /* width: 100%; */
+  /* max-width: 500px; */
+  overflow-y: scroll;
+}
+
+.full-width {
   width: 100%;
 }
 
@@ -188,5 +288,8 @@ getVisiblePage(filteredData);
 }
 .vm-table__column {
   /* min-width: 200px; */
+}
+.hidden {
+  display: none;
 }
 </style>

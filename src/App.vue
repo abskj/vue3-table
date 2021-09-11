@@ -1,10 +1,4 @@
 <script setup>
-// This starter template is using Vue 3 <script setup> SFCs
-// Check out https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup
-// import HelloWorld from "./components/HelloWorld.vue";
-// import DataTable from "./components/datatable/DataTable.vue";
-// import Column from "./components/column/Column.vue";
-// import ColumnGroup from "./components/columngroup/ColumnGroup.vue";
 import MyTable from "./components/custom/table.vue";
 
 const cars = [
@@ -25,7 +19,7 @@ const order = ["brand", "year", "vin", "color"];
 
 <template>
   <div>
-    <h2>Great table component</h2>
+    <h2>Reusable table component</h2>
     <div>
       <MyTable
         :data="cars"
@@ -35,6 +29,10 @@ const order = ["brand", "year", "vin", "color"];
         :filterableColumns="['color', 'year']"
         paginate
         :pageSize="7"
+        :minWidths="{year:'250px'}"
+        :maxWidths="{}"
+        :fullWidth="false"
+        :priority="['brand', 'color', 'year', 'vin']"
       >
         <!-- <template v-slot:row="{ row, columns }">
           <td v-for="col in columns" :key="row[col]">
